@@ -3,6 +3,7 @@ package backend
 import (
 	"fmt"
 	"log"
+	"bytes"
 	"net/http"
 	"encoding/json"
 )
@@ -110,11 +111,32 @@ func RemoveHostRule(w http.ResponseWriter, r *http.Request) {
 }
 
 
+func GetCurrentConfig(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	config := getCurrentConfigString()
+	fmt.Fprintf(w, config)
+}
+
+func ReplaceConfig(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r.Body)
+	b := buf.Bytes()
+	err := replaceConfig(b)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"message" : "%s" }`, err.Error()), 500)
+		return
+	}
+	fmt.Fprintf(w, `{"message" : "Success"}`)
+}
+
 func listen() {
 	http.HandleFunc("/addnewproxy", AddNewProxy)
 	http.HandleFunc("/addhostrule", AddHostRule)
 	http.HandleFunc("/addbackendsystem", AddBackendSystem)
 	http.HandleFunc("/removehostrule", RemoveHostRule)
+	http.HandleFunc("/currentconfig", GetCurrentConfig)
+	http.HandleFunc("/replaceconfig", ReplaceConfig)
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)

@@ -100,6 +100,30 @@ func configSaver(path string) {
 	
 }
 
+func getCurrentConfigString() string {
+	x.RLock()
+	defer x.RUnlock()
+	config := ConfigData{ HostRules : x.HostRules, BackendStruct : x.BackendStruct}
+	data, err := json.Marshal(config)
+	if err != nil {
+		log.Println(err.Error())
+		return `{}`
+	}
+	return string(data)
+}
+
+func replaceConfig(configData []byte) error {
+	x.Lock()
+	defer x.Unlock()
+	x.HostRules = make(map[string]HostRule)
+	x.BackendStruct =  make(map[string][]string)
+	err := json.Unmarshal(configData, x)
+	if err != nil {
+		log.Printf("Unable to load config: %v\n", err)
+	}
+	return err
+}
+
 func addHostRule(host, backend, rule string) error {
 	x.Lock()
 	defer x.Unlock() 
@@ -159,6 +183,12 @@ func getHostBackend(host string) string {
 }
 
 func addBackendSystem(backend, hostUri string) {
+	x.Lock()
+	defer x.Unlock()
+	x.BackendStruct[backend] =  []string{hostUri,}
+}
+
+func addBackendHost(backend, hostUri string) {
 	x.Lock()
 	defer x.Unlock()
 	x.BackendStruct[backend] = append(x.BackendStruct[backend], hostUri)
